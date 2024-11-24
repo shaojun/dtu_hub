@@ -82,7 +82,6 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 @app.get("/dtu_state/{dtu_sn}")
 async def get_dtu_state(dtu_sn: str, token: str = Depends(oauth2_scheme)) -> DTU_DEVICE_STATE:
     logger.debug(f"Getting DTU state for: {dtu_sn}")
-    # ...existing code...
     return DTU_DEVICE_STATE.Unknown  # Placeholder return value
 
 
