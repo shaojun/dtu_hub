@@ -11,18 +11,10 @@ from pydantic import BaseModel
 from device.communicator import DeviceCommunicator
 from models import *
 from device.simple_mqtt_client import SimpleMqttClient
+from logging_config import setup_logging
 
 # Setup logging
-logger = logging.getLogger("dtu_hub")
-logger.setLevel(logging.INFO)
-handler = TimedRotatingFileHandler(
-    "dtu_hub.log", when="midnight", interval=1, backupCount=30)
-handler.suffix = "%Y%m%d"
-handler.maxBytes = 10 * 1024 * 1024  # 10MB
-formatter = logging.Formatter(
-    '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+logger = setup_logging()
 
 deviceCommunicator = DeviceCommunicator(logger)
 app = FastAPI()
