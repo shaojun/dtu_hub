@@ -7,7 +7,7 @@ def setup_logging():
     if not os.path.exists(log_directory):
         os.makedirs(log_directory)
     logger = logging.getLogger("dtu_hub")
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
     handler = TimedRotatingFileHandler(
         os.path.join(log_directory, "dtu_hub.log"),
         when="midnight",
