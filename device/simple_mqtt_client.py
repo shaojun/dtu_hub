@@ -41,7 +41,7 @@ class SimpleMqttClient:
     def start_async(self):
         def on_connect(client, userdata, flags, rc, properties):
             if rc == 0 and client.is_connected():
-                self.log_func("MqttUtility, Connected to MQTT Broker!")
+                self.log_func("simple_mqtt_client, Connected to MQTT Broker!")
                 # self.client.subscribe(self.sub_topic)
 
                 online_message = {"status": "online", "client_id": self.mqtt_client_id,
@@ -56,7 +56,7 @@ class SimpleMqttClient:
                         self.client.subscribe(sub_topic)
             else:
                 self.log_func(
-                    "MqttUtility, Failed to connect, return code %d\n", rc)
+                    "simple_mqtt_client, Failed to connect, return code %d\n", rc)
 
         def on_message(client, userdata, msg: mqtt_client.MQTTMessage):
             if self.on_msg_received_callback:
@@ -83,11 +83,11 @@ class SimpleMqttClient:
             # break
         except Exception as err:
             self.log_func(
-                f"MqttUtility, Failed to connect to broker with error: {err}")
+                f"simple_mqtt_client, Failed to connect to broker with error: {err}")
             return False
         self.client.loop_start()
         self.log_func(
-            f"MqttUtility, successfully setup mqtt client, client_id: {self.mqtt_client_id}")
+            f"simple_mqtt_client, successfully setup mqtt client, client_id: {self.mqtt_client_id}")
 
     def stop(self):
         planned_offline_message = {"status": "offline", "client_id": self.mqtt_client_id,
@@ -159,6 +159,9 @@ class SimpleMqttClient:
                     # print(f"{datetime.datetime.now()} - set result")
                     loop.call_soon_threadsafe(
                         response_future.set_result, msg.payload)
+            else:
+                self.log_func(
+                    f"simple_mqtt_client, capture_response with failure from topic: {msg.topic}, payload: {msg.payload}")
 
         try:
             self.client.message_callback_add(response_topic, on_temp_message)
@@ -166,7 +169,7 @@ class SimpleMqttClient:
             response = await asyncio.wait_for(response_future, timeout=timeout_ms / 1000)
         except asyncio.TimeoutError:
             self.log_func(
-                f"Timed out to receive from request_topic: {request_topic}, request_msg: {request_msg}, response_topic: {response_topic}")
+                f"simple_mqtt_client, Timed out to receive from request_topic: {request_topic}, request_msg: {request_msg}, response_topic: {response_topic}")
             response = None
         finally:
             self.client.message_callback_remove(response_topic)

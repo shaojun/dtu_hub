@@ -1,9 +1,11 @@
 from logging import Logger
 import time
+import uuid
 from device.simple_mqtt_client import SimpleMqttClient
 from models import *
 from device.protocol_parser.parser import DeviceProtocolParser
 import inspect
+import paho.mqtt.client as mqtt_client
 
 
 class DeviceCommunicator:
@@ -25,15 +27,21 @@ class DeviceCommunicator:
 
     def __init_mqtt_client__(self):
         mqtt_broker_url = "bs.shaojun.xyz"
-        mqtt_client_id = "simple_mqtt_client"
+        mqtt_client_id = f"dtu_hub_simple_mqtt_client_{uuid.getnode()}"
         username = "test_user"
         password = "test_pass"
-        sub_topic = "dtu/+/outbox"
-        def log_func(msg): return self.logger.info(msg)
+        sub_topic = ["dtu/+/outbox",
+                     "edge/YCSH_TONGLE__838383838383/Applications.FDC.FdcServerHostApp/Applications.FDC.FdcServerHostApp,FdcSer_ac8a48af9b2ce04d_0/thing/service/#"]
+
+        def log_func(msg):
+            self.logger.debug(msg)
+
+        def bulk_logger(client, msg: mqtt_client.MQTTMessage):
+            self.logger.debug(
+                f"topic: {msg.topic} - payload: {msg.payload.decode()}")
         self.simple_mqtt_client = SimpleMqttClient(
             mqtt_broker_url, mqtt_client_id, username, password, sub_topic,
-            lambda client, msg: print(
-                f"on_msg_received_callback-> {msg.payload.decode()}"), log_func)
+            bulk_logger, log_func)
         self.simple_mqtt_client.start_async()
         while not self.simple_mqtt_client.client.is_connected():
             print("Waiting for mqtt client to connect...")
@@ -55,7 +63,7 @@ class DeviceCommunicator:
             f"dtu/{request.dtu_sn}/inbox",
             device_request_data,
             None,
-            lambda device_raw_req_msg, device_raw_resp_msg, context: parser.CheckRawDataIsValidDeviceResponse(
+            lambda device_raw_req_msg, device_raw_resp_msg, context: parser.CheckIsRequestAndResponsePair(
                 device_raw_req_msg, device_raw_resp_msg, context),
             timeout_ms)
         if response_device_raw_data is None:
@@ -67,7 +75,8 @@ class DeviceCommunicator:
                 request_type=request.request_type,
                 overall_state_code=400, description="Timeout to receive response from device"
             )
-        response_data = parser.Deserialize(response_device_raw_data)
+        response_data = parser.Deserialize(
+            device_request_data, response_device_raw_data)
         return SubDeviceResponse(
             id=request.id,
             dtu_sn=request.dtu_sn,

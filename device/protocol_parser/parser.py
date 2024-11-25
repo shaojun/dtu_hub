@@ -11,11 +11,11 @@ class DeviceProtocolParser(ABC):
         pass
 
     @abstractmethod
-    def CheckRawDataIsValidDeviceResponse(self, raw_device_request_data: Union[bytes, str], raw_device_response_data: bytes, context: dict) -> bool:
+    def CheckIsRequestAndResponsePair(self, raw_device_request_data: Union[bytes, str], raw_device_response_data: bytes, context: dict) -> bool:
         pass
 
     @abstractmethod
-    def Deserialize(self, data: Union[bytes, str]) -> dict:
+    def Deserialize(self, raw_device_request_data: Union[bytes, str], raw_device_response_data: Union[bytes, str]) -> dict:
         pass
 
     def bcd_to_int(bcd_bytes: bytes):
@@ -30,17 +30,68 @@ class DeviceProtocolParser(ABC):
 
 
 class GPS_EBYTE_E108_D01_Parser(DeviceProtocolParser):
+    def get_crc16(self, data: bytes) -> bytes:
+        """
+        @param data: bytes, the data to calculate the CRC16, from 设备地址 到 读取数量
+        """
+        crc = 0xFFFF
+        for byte in data:
+            crc ^= byte
+            for _ in range(8):
+                if crc & 0x0001:
+                    crc >>= 1
+                    crc ^= 0xA001
+                else:
+                    crc >>= 1
+        return crc.to_bytes(2, byteorder='little')
+
     def Serialize(self, request: SubDeviceRequest) -> Union[bytes, str]:
         # Implement serialization logic for GPS_EBYTE_E108_D01
         """
-        from doc, sending: 01(设备地址)03(功能码)00C8(寄存器首地址)0011(读取数量)0438(Modbus CRC校验)
+        @return: bytes of msg, in structure of: device_address_byte + msg_body + crc, 
+        sample 1, 读取定位数据: 01 0300050023 1412, 
+        sample 2: 读取设备波特率: 01 0300030001 740A,
+        sample 3, 修改波特率: 01 0600030003 39CB
         """
+        # convert the physical_id to bytes
+        device_address_byte = struct.pack('B', int(request.physical_id))
         if request.request_type == REQUEST_TYPE.Read:
-            # return the bytes of 010300C800110438
-            return b'\x01\x03\x00\xC8\x00\x11\x04\x38'
+            msg_body = b'\x03\x00\xC8\x00\x11'
+            crc = self.get_crc16(device_address_byte + msg_body)
+            return device_address_byte + msg_body + crc
+        elif request.request_type == REQUEST_TYPE.Read_Advanced:
+            # interpret the Read_Advanced to 读取设备波特率
+            """
+            request raw data sample: 01 0300030001 740A
+            """
+            msg_body = b'\x03\x00\x03\x00\x01'
+            crc = self.get_crc16(device_address_byte + msg_body)
+            return device_address_byte + msg_body + crc
+
+        elif request.request_type == REQUEST_TYPE.Write:
+            # interpret the Write to modify the baud rate to 2400bps
+            """
+            request raw data sample: 01060003000339CB, the CRC校验 are 39 and CB
+
+            寄存器功能      寄存器地址        数据格式      数据范围/备注
+            波特率          0003             Int16        波特率代码：
+                                                            0x0000：1200bps，0x0001：2400bps，
+                                                            0x0002：4800bps，0x0003：9600bps，
+                                                            0x0004：19200bps，0x0005：38400bps，
+                                                            0x0006：57600bps，0x0007：115200bps，
+            """
+            msg_body = b'\x06\x00\x03\x00\x01'
+            crc = self.get_crc16(device_address_byte + msg_body)
+            return device_address_byte + msg_body + crc
+        elif request.request_type == REQUEST_TYPE.ReWrite:
+            # interpret the ReWrite to modify the baud rate to 9600bps
+            # 修改波特率 sample: 01 0600030003 39CB
+            msg_body = b'\x06\x00\x03\x00\x03'
+            crc = self.get_crc16(device_address_byte + msg_body)
+            return device_address_byte + msg_body + crc
         raise ValueError("Unsupported request type")
 
-    def CheckRawDataIsValidDeviceResponse(
+    def CheckIsRequestAndResponsePair(
             self,
             raw_device_request_data: Union[bytes, str],
             raw_device_response_data: bytes,
@@ -61,22 +112,34 @@ class GPS_EBYTE_E108_D01_Parser(DeviceProtocolParser):
         if len(raw_device_response_data) != (3+raw_device_response_data[2]+2):
             return False
         try:
-            body: bytes = raw_device_response_data[3:-2]
-            # print(codecs.encode(body, 'hex'))
-            # check first 2 bytes, must be 0x0000 or 0x0001
-            if body[0] != 0x00 or body[1] not in [0x00, 0x01]:
-                return False
-            # check the year, month, day, hour, min, sec are valid
-            year = int.from_bytes(body[2:4], byteorder='big')
-            # are we still alive at year 2050?
-            if year < 2024 or year > 2050:
-                return False
+            # 读取定位数据 request sample: 01 0300050023 1412 or 01 0300c80011 0438
+            if raw_device_request_data[1] == 0x03 and (raw_device_request_data[3] == 0x05 or raw_device_request_data[3] == 0xC8):
+                body: bytes = raw_device_response_data[3:-2]
+                # print(codecs.encode(body, 'hex'))
+                # check first 2 bytes, must be 0x0000 or 0x0001
+                if body[0] != 0x00 or body[1] not in [0x00, 0x01]:
+                    return False
+                # check the year, month, day, hour, min, sec are valid
+                year = int.from_bytes(body[2:4], byteorder='big')
+                # are we still alive at year 2050?
+                if year < 2024 or year > 2050:
+                    return False
+            # 读取设备波特率 request sample: 01 0300030001 740A, response sample: 01 03020003 F845
+            elif raw_device_request_data[1] == 0x03 and raw_device_request_data[2] == 0x00 and raw_device_request_data[3] == 0x03:
+                # check the baud rate is 0x0001 to 0x0007
+                if raw_device_response_data[3] != 0x00 or raw_device_response_data[4] not in [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07]:
+                    return False
+            # 修改波特率 request sample: 01 0600030003 39CB, response sample: 01 0600030003 39CB
+            elif raw_device_request_data[1] == 0x06 and raw_device_request_data[2] == 0x00 and raw_device_request_data[3] == 0x03:
+                # check the baud rate is 0x0003
+                if raw_device_response_data[1] != 0x06 or raw_device_response_data[4] != 0x00 or raw_device_response_data[5] not in [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07]:
+                    return False
             return True
         except Exception as e:
             print(f"CheckRawDataIsValidDeviceResponse error: {e}")
             return False
 
-    def Deserialize(self, data: Union[bytes, str]) -> dict:
+    def Deserialize(self, raw_device_request_data: Union[bytes, str], raw_device_response_data: Union[bytes, str]) -> dict:
         # Implement deserialization logic for GPS_EBYTE_E108_D01
         """
         from doc, receiving:
@@ -89,41 +152,72 @@ class GPS_EBYTE_E108_D01_Parser(DeviceProtocolParser):
         43 02 70 A4(对地航向,32位浮点数,大端-大端)
         2A 8C(Modbus CRC校验)         
         """
-        if not isinstance(data, bytes):
+        if not isinstance(raw_device_response_data, bytes):
             raise ValueError("Invalid data type, must be bytes")
-        body: bytes = data[3:-2]
-        is_location_valid = body[1] == 0x01
-        year = int.from_bytes(body[2:4], byteorder='big')
-        month = int.from_bytes(body[4:6], byteorder='big')
-        day = int.from_bytes(body[6:8], byteorder='big')
-        hour = int.from_bytes(body[8:10], byteorder='big')
-        min = int.from_bytes(body[10:12], byteorder='big')
-        sec = int.from_bytes(body[12:14], byteorder='big')
+        # 读取定位数据 request sample: 01 0300050023 1412 or 01 0300c80011 0438
+        if raw_device_request_data[1] == 0x03 and (raw_device_request_data[3] == 0x05 or raw_device_request_data[3] == 0xC8)\
+                and raw_device_response_data[1] == 0x03:
+            body: bytes = raw_device_response_data[3:-2]
+            is_location_valid = body[1] == 0x01
+            year = int.from_bytes(body[2:4], byteorder='big')
+            month = int.from_bytes(body[4:6], byteorder='big')
+            day = int.from_bytes(body[6:8], byteorder='big')
+            hour = int.from_bytes(body[8:10], byteorder='big')
+            min = int.from_bytes(body[10:12], byteorder='big')
+            sec = int.from_bytes(body[12:14], byteorder='big')
 
-        longitude_heading_raw = body[14:16]
-        longitude_heading = chr(longitude_heading_raw[1])
-        longitude = struct.unpack('>f', body[16:20])[0]
-        latitude_heading_raw = body[20:22]
-        latitude_heading = chr(latitude_heading_raw[1])
-        latitude = struct.unpack('>f', body[22:26])[0]
+            longitude_heading_raw = body[14:16]
+            longitude_heading = chr(longitude_heading_raw[1])
+            longitude = struct.unpack('>f', body[16:20])[0]
+            latitude_heading_raw = body[20:22]
+            latitude_heading = chr(latitude_heading_raw[1])
+            latitude = struct.unpack('>f', body[22:26])[0]
 
-        speed_to_ground = struct.unpack('>f', body[26:30])[0]
-        heading_to_ground = struct.unpack('>f', body[30:34])[0]
-        return {
-            "is_location_valid": is_location_valid,
-            "year": year,
-            "month": month,
-            "day": day,
-            "hour": hour,
-            "min": min,
-            "sec": sec,
-            "longitude_heading": longitude_heading,
-            "longitude": longitude,
-            "latitude_heading": latitude_heading,
-            "latitude": latitude,
-            "speed_to_ground": speed_to_ground,
-            "heading_to_ground": heading_to_ground
-        }
+            speed_to_ground = struct.unpack('>f', body[26:30])[0]
+            heading_to_ground = struct.unpack('>f', body[30:34])[0]
+            return {
+                "is_location_valid": is_location_valid,
+                "year": year,
+                "month": month,
+                "day": day,
+                "hour": hour,
+                "min": min,
+                "sec": sec,
+                "longitude_heading": longitude_heading,
+                "longitude": longitude,
+                "latitude_heading": latitude_heading,
+                "latitude": latitude,
+                "speed_to_ground": speed_to_ground,
+                "heading_to_ground": heading_to_ground
+            }
+        # 读取设备波特率 request sample: 010300030001740A, response sample:0103020003F845
+        elif raw_device_request_data[1] == 0x03 and raw_device_request_data[3] == 0x03 and\
+                raw_device_response_data[1] == 0x03 and raw_device_response_data[2] == 0x02:
+            baud_rate_raw = raw_device_response_data[4]
+            baud_rate_readable = [1200, 2400, 4800, 9600,
+                                  19200, 38400, 57600, 115200][baud_rate_raw]
+            return {
+                "baud_rate": baud_rate_readable
+            }
+
+        # 修改波特率 request sample: 01060003000339CB,  response sample: 01 0600030003 39CB
+        elif raw_device_request_data[1] == 0x03 and raw_device_request_data[3] == 0x03 and\
+                raw_device_response_data[1] == 0x06 and raw_device_response_data[2] == 0x00 and raw_device_response_data[3] == 0x03:
+            baud_rate_raw = raw_device_response_data[4]
+            baud_rate_readable = [1200, 2400, 4800, 9600,
+                                  19200, 38400, 57600, 115200][baud_rate_raw]
+            """
+            波特率代码：
+            0x0000：1200bps，0x0001：2400bps，
+            0x0002：4800bps，0x0003：9600bps，
+            0x0004：19200bps，0x0005：38400bps，
+            0x0006：57600bps，0x0007：115200bps
+            """
+            baud_rate_readable = [1200, 2400, 4800, 9600,
+                                  19200, 38400, 57600, 115200][baud_rate_raw]
+            return {
+                "baud_rate": baud_rate_readable
+            }
 
 
 class Probe_YiTong_TankTruck_Parser(DeviceProtocolParser):
@@ -147,7 +241,7 @@ class Probe_YiTong_TankTruck_Parser(DeviceProtocolParser):
             return msg
         raise ValueError("Unsupported request type")
 
-    def CheckRawDataIsValidDeviceResponse(self, raw_device_request_data: Union[bytes, str], raw_device_response_data: bytes, context: dict) -> bool:
+    def CheckIsRequestAndResponsePair(self, raw_device_request_data: Union[bytes, str], raw_device_response_data: bytes, context: dict) -> bool:
         """
         返回数据格式：
         AA 数据 校验和 BB     （数据字节数 = 13+2×温度点数）
@@ -168,7 +262,7 @@ class Probe_YiTong_TankTruck_Parser(DeviceProtocolParser):
         M1  液面浮子到电子仓的长度。
         举例：探棒收到命令  AA 01 01 06 00 08 BB
         探棒返回数据  AA 01 01 02 03 21 37 99 99 99 00 25 01 02 10 67 10 49 99 99 87 BB
-        分析数据如下：
+        分析数据如下：aa 01 01 02 01 79 58 99 99 99 00 11 47 02 09 96 09 91 09 99 12 bb
         AA 开始符01类别号01探棒号02探棒类型
         03 21 37液面浮子到电子仓的长度321.37mm
         99 99 99 这3字节备用
@@ -183,7 +277,11 @@ class Probe_YiTong_TankTruck_Parser(DeviceProtocolParser):
         """
         if not isinstance(raw_device_response_data, bytes):
             return False
-        if len(raw_device_response_data) != (13+2*raw_device_response_data[12]+2):
+        debug_hex_str = codecs.encode(
+            raw_device_response_data, 'hex').decode('utf-8')
+        print(
+            f"Probe_YiTong_TankTruck_Parser, CheckIsRequestAndResponsePair: {debug_hex_str}")
+        if len(raw_device_response_data) != (1+13+2*raw_device_response_data[13]+2+1+1):
             return False
         try:
             body: bytes = raw_device_response_data[1:-1]
@@ -197,15 +295,19 @@ class Probe_YiTong_TankTruck_Parser(DeviceProtocolParser):
             if body[2] != 0x02:
                 return False
             # check the 校验和
-            checksum = sum(body) & 0xFF
-            if checksum != raw_device_response_data[-2]:
-                return False
+            # debug_hex_str = codecs.encode(
+            #     raw_device_response_data[1:-2], 'hex').decode('utf-8')
+            # print(
+            #     f"Probe_YiTong_TankTruck_Parser, CheckIsRequestAndResponsePair: {debug_hex_str}")
+            # checksum = sum(raw_device_response_data[1:-2]) & 0x00FF
+            # if checksum != raw_device_response_data[-2]:
+            #     return False
             return True
         except Exception as e:
             print(f"CheckRawDataIsValidDeviceResponse error: {e}")
             return False
 
-    def Deserialize(self, data: Union[bytes, str]) -> dict:
+    def Deserialize(self, raw_device_request_data: Union[bytes, str], raw_device_response_data: Union[bytes, str]) -> dict:
         """
         返回数据格式：
         AA 数据 校验和 BB     （数据字节数 = 13+2×温度点数）
@@ -240,10 +342,10 @@ class Probe_YiTong_TankTruck_Parser(DeviceProtocolParser):
 
         """
         # Implement deserialization logic for Probe_YiTong_TankTruck
-        if not isinstance(data, bytes):
+        if not isinstance(raw_device_response_data, bytes):
             raise ValueError("Invalid data type, must be bytes")
         parsed_data = {}
-        body: bytes = data[1:-1]
+        body: bytes = raw_device_response_data[1:-1]
         # check the 类别号
         类别号 = body[0]
         # check the 探棒号
@@ -268,7 +370,13 @@ class Probe_YiTong_TankTruck_Parser(DeviceProtocolParser):
             "温度点数": 温度点数,
             "温度": []
         }
-        for i in range(温度点数):
+
+        if 温度点数 == 0:
+            raise ValueError("No temperature data as 温度点数 is 0")
+        elif 温度点数 == 1:
+            温度A = DeviceProtocolParser.bcd_to_int(body[13:15])/10-80
+            parsed_data["温度"].append({"温度A": 温度A})
+        elif 温度点数 == 2:
             温度A = DeviceProtocolParser.bcd_to_int(body[13:15])/10-80
             温度B = DeviceProtocolParser.bcd_to_int(body[15:17])/10-80
             parsed_data["温度"].append({"温度A": 温度A, "温度B": 温度B})

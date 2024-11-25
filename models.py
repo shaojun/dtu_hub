@@ -25,6 +25,8 @@ class SUB_DEVICE_TYPE(str, Enum):
 class REQUEST_TYPE(str, Enum):
     Read = "Read",
     Read_Advanced = "Read_Advanced",
+    Write = "Write",
+    ReWrite = "ReWrite",
 
 
 class SubDeviceRequest(BaseModel):

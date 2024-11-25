@@ -22,8 +22,8 @@ with open('log_config.yaml', 'r') as f:
     
 # Setup logging
 main_logger = logging.getLogger("mainLogger")
-
-deviceCommunicator = DeviceCommunicator(main_logger)
+communicator_logger = logging.getLogger("communicatorLogger")
+deviceCommunicator = DeviceCommunicator(communicator_logger)
 app = FastAPI()
 
 # Hardcoded credentials

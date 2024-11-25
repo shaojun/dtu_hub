@@ -1,12 +1,28 @@
 
 import unittest
-from parser import GPS_EBYTE_E108_D01_Parser
+from device.protocol_parser.parser import GPS_EBYTE_E108_D01_Parser
 from models import SubDeviceRequest, REQUEST_TYPE
 
 class TestGPS_EBYTE_E108_D01_Parser(unittest.TestCase):
 
     def setUp(self):
         self.parser = GPS_EBYTE_E108_D01_Parser()
+
+    def test_GPS_EBYTE_E108_D01_Parser_get_crc16_test_method1(self):
+        # use sample data from doc: 0x010300C800110438
+        data = b'\x01\x03\x00\xC8\x00\x11'
+        expected_output = b'\x04\x38'
+        self.assertEqual(self.parser.get_crc16(data), expected_output)
+
+        # use sample data from doc: 010300010001D5CA
+        data = b'\x01\x03\x00\x01\x00\x01'
+        expected_output = b'\xD5\xCA'
+        self.assertEqual(self.parser.get_crc16(data), expected_output)
+
+        # use sample data from doc: 01060003000339CB
+        data = b'\x01\x06\x00\x03\x00\x03'
+        expected_output = b'\x39\xCB'
+        self.assertEqual(self.parser.get_crc16(data), expected_output)
 
     def test_serialize_read_request(self):
         request = SubDeviceRequest(request_type=REQUEST_TYPE.Read)
