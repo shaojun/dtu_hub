@@ -1,5 +1,5 @@
 import time
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
@@ -13,6 +13,8 @@ import yaml
 from device.communicator import DeviceCommunicator
 from models import *
 from device.simple_mqtt_client import SimpleMqttClient
+from fastapi.middleware import Middleware
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 
 with open('log_config.yaml', 'r') as f:
     config = yaml.safe_load(f.read())
@@ -100,7 +102,16 @@ async def get_sub_device_state(device_id: str, token: str = Depends(oauth2_schem
 @app.post("/sub_device_request")
 async def send_sub_device_request(request: SubDeviceRequest, token: str = Depends(oauth2_scheme)) -> SubDeviceResponse:
     main_logger.debug(f"Sending request to sub device: {request}")
-    response = await deviceCommunicator.send_async(request, 6000)
+    response = await deviceCommunicator.send_async(request, 8000)
+    main_logger.debug(f"Received response from sub device: {response}")
+    return response
+
+@app.middleware("http")
+async def log_request_data(request: Request, call_next):
+    client_ip = request.client.host
+    user_agent = request.headers.get('user-agent', 'unknown')
+    main_logger.info(f"Request from {client_ip} with User-Agent: {user_agent}")
+    response = await call_next(request)
     return response
 
 if __name__ == "__main__":
