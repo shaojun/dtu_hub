@@ -3,3 +3,4 @@ uvicorn
 python-jose==3.3.0
 pydantic
 paho-mqtt
+python-multipart
