@@ -3,7 +3,7 @@ import logging
 from logging.handlers import TimedRotatingFileHandler
 
 def setup_logging():
-    log_directory = "/home/shao/dtu_hub/log"
+    log_directory = "./log"
     if not os.path.exists(log_directory):
         os.makedirs(log_directory)
     logger = logging.getLogger("dtu_hub")
