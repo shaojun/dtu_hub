@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: Build and Push Docker Image and SSH re-run the container
 
 on:
   push:
@@ -44,4 +44,4 @@ jobs:
           docker pull ${{ secrets.DOCKER_USERNAME }}/dtu_hub:latest
           docker stop dtu_hub || true
           docker rm dtu_hub || true
-          docker run -d -p 8000:8000 --name dtu_hub -v dtu_hub_logs:/log ${{ secrets.DOCKER_USERNAME }}/dtu_hub:latest
+          docker run -d -p 8000:8000 --name dtu_hub -v dtu_hub_logs:/app/log ${{ secrets.DOCKER_USERNAME }}/dtu_hub:latest
