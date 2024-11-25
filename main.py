@@ -4,19 +4,24 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
 from enum import Enum
+import logging.config
 import logging
 from logging.handlers import TimedRotatingFileHandler
 from pydantic import BaseModel
+import yaml
 
 from device.communicator import DeviceCommunicator
 from models import *
 from device.simple_mqtt_client import SimpleMqttClient
-from logging_config import setup_logging
 
+with open('log_config.yaml', 'r') as f:
+    config = yaml.safe_load(f.read())
+    logging.config.dictConfig(config)
+    
 # Setup logging
-logger = setup_logging()
+main_logger = logging.getLogger("mainLogger")
 
-deviceCommunicator = DeviceCommunicator(logger)
+deviceCommunicator = DeviceCommunicator(main_logger)
 app = FastAPI()
 
 # Hardcoded credentials
@@ -81,25 +86,25 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 @app.get("/dtu_state/{dtu_sn}")
 async def get_dtu_state(dtu_sn: str, token: str = Depends(oauth2_scheme)) -> DTU_DEVICE_STATE:
-    logger.debug(f"Getting DTU state for: {dtu_sn}")
+    main_logger.debug(f"Getting DTU state for: {dtu_sn}")
     return DTU_DEVICE_STATE.Unknown  # Placeholder return value
 
 
 @app.get("/sub_device_state/{device_id}")
 async def get_sub_device_state(device_id: str, token: str = Depends(oauth2_scheme)) -> SUB_DEVICE_STATE:
-    logger.debug(f"Getting sub device state for: {device_id}")
+    main_logger.debug(f"Getting sub device state for: {device_id}")
     # ...existing code...
     return SUB_DEVICE_STATE.Unknown  # Placeholder return value
 
 
 @app.post("/sub_device_request")
 async def send_sub_device_request(request: SubDeviceRequest, token: str = Depends(oauth2_scheme)) -> SubDeviceResponse:
-    logger.debug(f"Sending request to sub device: {request}")
+    main_logger.debug(f"Sending request to sub device: {request}")
     response = await deviceCommunicator.send_async(request, 6000)
     return response
 
 if __name__ == "__main__":
-    logger.info("Starting DTU Hub...")
+    main_logger.info("Starting DTU Hub...")
     deviceCommunicator.init()
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
