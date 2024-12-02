@@ -36,8 +36,7 @@ class DeviceCommunicator:
             self.logger.debug(msg)
 
         def bulk_logger(client, msg: mqtt_client.MQTTMessage):
-            self.logger.debug(
-                f"topic: {msg.topic} - payload: {msg.payload.decode()}")
+            pass
         self.simple_mqtt_client = SimpleMqttClient(
             mqtt_broker_url, mqtt_client_id, username, password, sub_topic,
             bulk_logger, log_func)
