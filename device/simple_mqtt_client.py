@@ -103,6 +103,7 @@ class SimpleMqttClient:
 
     def send(self, topic: str, msg: Union[str, bytes]) -> bool:
         if not self.client or not self.client.is_connected():
+            return False
             raise ValueError("The mqtt client is not connected")
 
         if isinstance(msg, str):

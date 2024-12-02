@@ -30,8 +30,7 @@ class DeviceCommunicator:
         mqtt_client_id = f"dtu_hub_simple_mqtt_client_{uuid.getnode()}"
         username = "test_user"
         password = "test_pass"
-        sub_topic = ["dtu/+/outbox",
-                     "edge/YCSH_TONGLE__838383838383/Applications.FDC.FdcServerHostApp/Applications.FDC.FdcServerHostApp,FdcSer_ac8a48af9b2ce04d_0/thing/service/#"]
+        sub_topic = ["dtu/+/outbox"]
 
         def log_func(msg):
             self.logger.debug(msg)

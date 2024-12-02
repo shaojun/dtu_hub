@@ -121,8 +121,8 @@ class GPS_EBYTE_E108_D01_Parser(DeviceProtocolParser):
                     return False
                 # check the year, month, day, hour, min, sec are valid
                 year = int.from_bytes(body[2:4], byteorder='big')
-                # are we still alive at year 2050?
-                if year < 2024 or year > 2050:
+                # are we still alive?
+                if year < 1999 or year > 2150:
                     return False
             # 读取设备波特率 request sample: 01 0300030001 740A, response sample: 01 03020003 F845
             elif raw_device_request_data[1] == 0x03 and raw_device_request_data[2] == 0x00 and raw_device_request_data[3] == 0x03:
