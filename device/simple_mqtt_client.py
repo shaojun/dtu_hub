@@ -66,7 +66,7 @@ class SimpleMqttClient:
                 f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
 
         def on_disconnect(client, userdata, disconnectflags, rc, properties):
-            self.log_func(f"MqttUtility, Disconnected with result code: {rc}")
+            self.log_func(f"simple_mqtt_client, Disconnected with result code: {rc}")
         self.client = mqtt_client.Client(
             mqtt_client.CallbackAPIVersion.VERSION2, self.mqtt_client_id)
         self.client.username_pw_set(self.username, self.password)
@@ -129,6 +129,7 @@ class SimpleMqttClient:
             parameters are: raw device request msg, raw device response msg, context
         """
         if not self.client or not self.client.is_connected():
+            return None
             raise ValueError("The mqtt client is not connected")
         if isinstance(self.sub_topics, str):
             if response_topic is None:
