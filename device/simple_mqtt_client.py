@@ -162,7 +162,10 @@ class SimpleMqttClient:
         def on_temp_message(client, userdata, msg: mqtt_client.MQTTMessage):
             # self.log_func(
             #     f"on_temp_message called with topic: {msg.topic}, payload: {msg.payload}")
-            if capture_response(request_msg, msg.payload, {"request_send_timestamp": request_send_timestamp}):
+            if capture_response(request_msg, msg.payload,
+                                {"request_send_timestamp": request_send_timestamp,
+                                 "request_topic": request_topic,
+                                 "MQTTMessage": msg}):
                 if not response_future.done():
                     # print(f"{datetime.datetime.now()} - set result")
                     loop.call_soon_threadsafe(

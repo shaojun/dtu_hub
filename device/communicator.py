@@ -59,8 +59,9 @@ class DeviceCommunicator:
             f"dtu/{request.dtu_sn}/inbox",
             device_request_data,
             None,
-            lambda device_raw_req_msg, device_raw_resp_msg, context: parser.CheckIsRequestAndResponsePair(
-                device_raw_req_msg, device_raw_resp_msg, context),
+            lambda device_raw_req_msg, device_raw_resp_msg, context:
+                request.dtu_sn in context["MQTTMessage"].topic and parser.CheckIsRequestAndResponsePair(
+                    device_raw_req_msg, device_raw_resp_msg, context),
             timeout_ms)
         if response_device_raw_data is None:
             return SubDeviceResponse(
