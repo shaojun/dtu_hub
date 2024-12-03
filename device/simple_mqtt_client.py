@@ -59,6 +59,8 @@ class SimpleMqttClient:
                     "simple_mqtt_client, Failed to connect, return code %d\n", rc)
 
         def on_message(client, userdata, msg: mqtt_client.MQTTMessage):
+            self.log_func(
+                f"simple_mqtt_client, on_message called, topic: {msg.topic}, payload: {msg.payload}")
             if self.on_msg_received_callback:
                 self.on_msg_received_callback(self, msg)
             return
@@ -66,7 +68,8 @@ class SimpleMqttClient:
                 f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
 
         def on_disconnect(client, userdata, disconnectflags, rc, properties):
-            self.log_func(f"simple_mqtt_client, Disconnected with result code: {rc}")
+            self.log_func(
+                f"simple_mqtt_client, Disconnected with result code: {rc}")
         self.client = mqtt_client.Client(
             mqtt_client.CallbackAPIVersion.VERSION2, self.mqtt_client_id)
         self.client.username_pw_set(self.username, self.password)
