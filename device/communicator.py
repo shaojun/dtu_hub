@@ -1,4 +1,5 @@
 from logging import Logger
+import logging
 import time
 import uuid
 from device.simple_mqtt_client import SimpleMqttClient
@@ -9,8 +10,8 @@ import paho.mqtt.client as mqtt_client
 
 
 class DeviceCommunicator:
-    def __init__(self, logger: Logger):
-        self.logger = logger
+    def __init__(self):
+        self.logger = logging.getLogger("communicatorLogger")
         self.simple_mqtt_client: SimpleMqttClient = None
         self.protocol_parsers: list[DeviceProtocolParser] = self._initialize_protocol_parsers(
         )
@@ -26,20 +27,17 @@ class DeviceCommunicator:
         return [parser_class() for parser_class in parser_classes]
 
     def __init_mqtt_client__(self):
-        mqtt_broker_url = "bs.shaojun.xyz"
+        mqtt_broker_url = "do.bugbug.fun"
         mqtt_client_id = f"dtu_hub_simple_mqtt_client_{uuid.getnode()}"
         username = "test_user"
         password = "test_pass"
         sub_topic = ["dtu/+/outbox"]
 
-        def log_func(msg):
-            self.logger.debug(msg)
-
         def bulk_logger(client, msg: mqtt_client.MQTTMessage):
             pass
         self.simple_mqtt_client = SimpleMqttClient(
             mqtt_broker_url, mqtt_client_id, username, password, sub_topic,
-            bulk_logger, log_func)
+            bulk_logger)
         self.simple_mqtt_client.start_async()
         while not self.simple_mqtt_client.client.is_connected():
             print("Waiting for mqtt client to connect...")

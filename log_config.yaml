@@ -28,7 +28,17 @@ handlers:
     interval: 86400
     backupCount: 1200
     maxBytes: 240240000
-    encoding: utf8  
+    encoding: utf8
+  mqtt_client_file_handler:
+    class: enhanced_rotating_file_handler.enhanced_rotating_file_handler
+    level: DEBUG
+    formatter: simple
+    filename: "log/mqtt_client.log"
+    when: S
+    interval: 86400
+    backupCount: 1200
+    maxBytes: 240240000
+    encoding: utf8
 loggers:
   sampleLogger:
     level: DEBUG
@@ -41,5 +51,9 @@ loggers:
   communicatorLogger:
     level: DEBUG
     handlers: [communicator_file_handler]
+    propagate: no
+  mqttClientLogger:
+    level: DEBUG
+    handlers: [mqtt_client_file_handler]
     propagate: no
 root:

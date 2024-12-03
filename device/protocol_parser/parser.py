@@ -1,4 +1,5 @@
 import codecs
+import logging
 import struct
 from typing import Union
 from models import *
@@ -30,6 +31,9 @@ class DeviceProtocolParser(ABC):
 
 
 class GPS_EBYTE_E108_D01_Parser(DeviceProtocolParser):
+    def __init__(self):
+        super().__init__()
+        self.logger = logging.getLogger("mqttClientLogger")
     def get_crc16(self, data: bytes) -> bytes:
         """
         @param data: bytes, the data to calculate the CRC16, from 设备地址 到 读取数量
@@ -108,8 +112,12 @@ class GPS_EBYTE_E108_D01_Parser(DeviceProtocolParser):
         2A 8C(Modbus CRC校验)         
         """
         if not isinstance(raw_device_response_data, bytes):
+            self.logger.debug(
+                "GPS_EBYTE_E108_D01_Parser, CheckIsRequestAndResponsePair, invalid data type")
             return False
         if len(raw_device_response_data) != (3+raw_device_response_data[2]+2):
+            self.logger.debug(
+                "GPS_EBYTE_E108_D01_Parser, CheckIsRequestAndResponsePair, invalid data length")
             return False
         try:
             # 读取定位数据 request sample: 01 0300050023 1412 or 01 0300c80011 0438
@@ -118,21 +126,29 @@ class GPS_EBYTE_E108_D01_Parser(DeviceProtocolParser):
                 # print(codecs.encode(body, 'hex'))
                 # check first 2 bytes, must be 0x0000 or 0x0001
                 if body[0] != 0x00 or body[1] not in [0x00, 0x01]:
+                    self.logger.debug(
+                        "GPS_EBYTE_E108_D01_Parser, CheckIsRequestAndResponsePair, invalid location data")
                     return False
                 # check the year, month, day, hour, min, sec are valid
                 year = int.from_bytes(body[2:4], byteorder='big')
                 # are we still alive?
                 if year < 1999 or year > 2150:
+                    self.logger.debug(
+                        "GPS_EBYTE_E108_D01_Parser, CheckIsRequestAndResponsePair, invalid year")
                     return False
             # 读取设备波特率 request sample: 01 0300030001 740A, response sample: 01 03020003 F845
             elif raw_device_request_data[1] == 0x03 and raw_device_request_data[2] == 0x00 and raw_device_request_data[3] == 0x03:
                 # check the baud rate is 0x0001 to 0x0007
                 if raw_device_response_data[3] != 0x00 or raw_device_response_data[4] not in [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07]:
+                    self.logger.debug(
+                        "GPS_EBYTE_E108_D01_Parser, CheckIsRequestAndResponsePair, invalid baud rate1")
                     return False
             # 修改波特率 request sample: 01 0600030003 39CB, response sample: 01 0600030003 39CB
             elif raw_device_request_data[1] == 0x06 and raw_device_request_data[2] == 0x00 and raw_device_request_data[3] == 0x03:
                 # check the baud rate is 0x0003
                 if raw_device_response_data[1] != 0x06 or raw_device_response_data[4] != 0x00 or raw_device_response_data[5] not in [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07]:
+                    self.logger.debug(
+                        "GPS_EBYTE_E108_D01_Parser, CheckIsRequestAndResponsePair, invalid baud rate2")
                     return False
             return True
         except Exception as e:
@@ -221,6 +237,9 @@ class GPS_EBYTE_E108_D01_Parser(DeviceProtocolParser):
 
 
 class Probe_YiTong_TankTruck_Parser(DeviceProtocolParser):
+    def __init__(self):
+        super().__init__()
+        self.logger = logging.getLogger("mqttClientLogger")
     def Serialize(self, request: SubDeviceRequest) -> Union[bytes, str]:
         """
         接收命令格式为： AA 类别号 探棒号 命令 参数 校验和 BB
@@ -276,23 +295,33 @@ class Probe_YiTong_TankTruck_Parser(DeviceProtocolParser):
 
         """
         if not isinstance(raw_device_response_data, bytes):
+            self.logger.debug(
+                "Probe_YiTong_TankTruck_Parser, CheckIsRequestAndResponsePair, invalid data type")
             return False
         debug_hex_str = codecs.encode(
             raw_device_response_data, 'hex').decode('utf-8')
         print(
             f"Probe_YiTong_TankTruck_Parser, CheckIsRequestAndResponsePair: {debug_hex_str}")
         if len(raw_device_response_data) != (1+13+2*raw_device_response_data[13]+2+1+1):
+            self.logger.debug(
+                "Probe_YiTong_TankTruck_Parser, CheckIsRequestAndResponsePair, invalid data length")
             return False
         try:
             body: bytes = raw_device_response_data[1:-1]
             # check the 类别号
             if body[0] != 0x01:
+                self.logger.debug(
+                    "Probe_YiTong_TankTruck_Parser, CheckIsRequestAndResponsePair, invalid category")
                 return False
             # check the 探棒号 should the same with the request
             if body[1] != int(raw_device_request_data[2]):
+                self.logger.debug(
+                    "Probe_YiTong_TankTruck_Parser, CheckIsRequestAndResponsePair, invalid probe number")
                 return False
             # check the 探棒类型 should be 0x02
             if body[2] != 0x02:
+                self.logger.debug(
+                    "Probe_YiTong_TankTruck_Parser, CheckIsRequestAndResponsePair, invalid probe type")
                 return False
             # check the 校验和
             # debug_hex_str = codecs.encode(

@@ -1,5 +1,7 @@
 import datetime
 import json
+from logging import Logger
+import logging
 import os
 import time
 from typing import Callable, Union
@@ -12,8 +14,7 @@ class SimpleMqttClient:
     def __init__(self, mqtt_broker_url, mqtt_client_id,
                  username, password,
                  sub_topics: Union[str, list[str]],
-                 on_msg_received_callback: Callable[[mqtt_client.Client, mqtt_client.MQTTMessage], None],
-                 log_func):
+                 on_msg_received_callback: Callable[[mqtt_client.Client, mqtt_client.MQTTMessage], None]):
         """
         mqtt_broker_url: str, the url of the mqtt broker
         mqtt_client_id: str, the client id of the mqtt client
@@ -32,7 +33,7 @@ class SimpleMqttClient:
 
         self.sub_topics = sub_topics
 
-        self.log_func = log_func
+        self.logger = logging.getLogger("mqttClientLogger")
 
         self.online_status_topic = f"dtu_hub/online_status"
         self.client = None
@@ -41,7 +42,8 @@ class SimpleMqttClient:
     def start_async(self):
         def on_connect(client, userdata, flags, rc, properties):
             if rc == 0 and client.is_connected():
-                self.log_func("simple_mqtt_client, Connected to MQTT Broker!")
+                self.logger.info(
+                    "simple_mqtt_client, Connected to MQTT Broker!")
                 # self.client.subscribe(self.sub_topic)
 
                 online_message = {"status": "online", "client_id": self.mqtt_client_id,
@@ -55,11 +57,11 @@ class SimpleMqttClient:
                     for sub_topic in self.sub_topics:
                         self.client.subscribe(sub_topic)
             else:
-                self.log_func(
+                self.logger.info(
                     "simple_mqtt_client, Failed to connect, return code %d\n", rc)
 
         def on_message(client, userdata, msg: mqtt_client.MQTTMessage):
-            self.log_func(
+            self.logger.debug(
                 f"simple_mqtt_client, on_message called, topic: {msg.topic}, payload: {msg.payload}")
             if self.on_msg_received_callback:
                 self.on_msg_received_callback(self, msg)
@@ -68,7 +70,7 @@ class SimpleMqttClient:
                 f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
 
         def on_disconnect(client, userdata, disconnectflags, rc, properties):
-            self.log_func(
+            self.logger.info(
                 f"simple_mqtt_client, Disconnected with result code: {rc}")
         self.client = mqtt_client.Client(
             mqtt_client.CallbackAPIVersion.VERSION2, self.mqtt_client_id)
@@ -85,11 +87,11 @@ class SimpleMqttClient:
             self.client.connect_async(self.mqtt_boker_url, self.port)
             # break
         except Exception as err:
-            self.log_func(
+            self.logger.info(
                 f"simple_mqtt_client, Failed to connect to broker with error: {err}")
             return False
         self.client.loop_start()
-        self.log_func(
+        self.logger.info(
             f"simple_mqtt_client, successfully setup mqtt client, client_id: {self.mqtt_client_id}")
 
     def stop(self):
@@ -111,7 +113,8 @@ class SimpleMqttClient:
 
         if isinstance(msg, str):
             msg = msg.encode('utf-8')  # Convert string to bytes
-
+        self.logger.debug(
+            f"simple_mqtt_client, send called with topic: {topic}, msg: {msg}")
         result = self.client.publish(topic, msg)
         status = result[0]
 
@@ -165,15 +168,17 @@ class SimpleMqttClient:
                     loop.call_soon_threadsafe(
                         response_future.set_result, msg.payload)
             else:
-                self.log_func(
+                self.logger.info(
                     f"simple_mqtt_client, capture_response with failure from topic: {msg.topic}, payload: {msg.payload}")
 
         try:
+            self.logger.debug(
+                f"simple_mqtt_client, send_async called with request_topic: {request_topic}, request_msg: {request_msg}, response_topic: {response_topic}")
             self.client.message_callback_add(response_topic, on_temp_message)
             self.client.publish(request_topic, request_msg)
             response = await asyncio.wait_for(response_future, timeout=timeout_ms / 1000)
         except asyncio.TimeoutError:
-            self.log_func(
+            self.logger.info(
                 f"simple_mqtt_client, Timed out to receive from request_topic: {request_topic}, request_msg: {request_msg}, response_topic: {response_topic}")
             response = None
         finally:
