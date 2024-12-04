@@ -171,8 +171,8 @@ class SimpleMqttClient:
                     loop.call_soon_threadsafe(
                         response_future.set_result, msg.payload)
             else:
-                self.logger.info(
-                    f"simple_mqtt_client, capture_response with failure from topic: {msg.topic}, payload: {msg.payload}")
+                self.logger.debug(
+                    f"simple_mqtt_client, capture_response test with a failure(will go on test) from topic: {msg.topic}, payload: {msg.payload}")
 
         try:
             self.logger.debug(
@@ -180,6 +180,8 @@ class SimpleMqttClient:
             self.client.message_callback_add(response_topic, on_temp_message)
             self.client.publish(request_topic, request_msg)
             response = await asyncio.wait_for(response_future, timeout=timeout_ms / 1000)
+            self.logger.debug(
+                f"simple_mqtt_client,       send_async response: {str(response or 'none')} from request_topic: {request_topic}, request_msg: {request_msg}, response_topic: {response_topic}")
         except asyncio.TimeoutError:
             self.logger.info(
                 f"simple_mqtt_client, Timed out to receive from request_topic: {request_topic}, request_msg: {request_msg}, response_topic: {response_topic}")

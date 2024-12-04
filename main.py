@@ -9,6 +9,7 @@ import logging
 from logging.handlers import TimedRotatingFileHandler
 from pydantic import BaseModel
 import yaml
+from threading import Lock
 
 from device.communicator import DeviceCommunicator
 from models import *
@@ -19,7 +20,7 @@ from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 with open('log_config.yaml', 'r') as f:
     config = yaml.safe_load(f.read())
     logging.config.dictConfig(config)
-    
+
 # Setup logging
 main_logger = logging.getLogger("mainLogger")
 deviceCommunicator = DeviceCommunicator()
@@ -97,13 +98,36 @@ async def get_sub_device_state(device_id: str, token: str = Depends(oauth2_schem
     # ...existing code...
     return SUB_DEVICE_STATE.Unknown  # Placeholder return value
 
+# Dictionary to store locks for each dtu_sn
+dtu_locks = {}
+# Global lock to synchronize access to dtu_locks
+global_lock = Lock()
 
 @app.post("/sub_device_request")
 async def send_sub_device_request(request: SubDeviceRequest, token: str = Depends(oauth2_scheme)) -> SubDeviceResponse:
+    target_dtu_sn = request.dtu_sn
     main_logger.debug(f"Sending request to sub device: {request}")
-    response = await deviceCommunicator.send_async(request, 8000)
-    main_logger.debug(f"Received response from sub device: {response}")
-    return response
+
+    # Ensure thread-safe access to the dtu_locks dictionary
+    with global_lock:
+        if target_dtu_sn not in dtu_locks:
+            dtu_locks[target_dtu_sn] = Lock()
+
+    lock = dtu_locks[target_dtu_sn]
+
+    if not lock.acquire(blocking=False):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Concurrent request detected for DTU {target_dtu_sn}. Please try again later."
+        )
+
+    try:
+        response = await deviceCommunicator.send_async(request, 6000)
+        main_logger.debug(f"Received response from sub device: {response}")
+        return response
+    finally:
+        lock.release()
+
 
 @app.middleware("http")
 async def log_request_data(request: Request, call_next):
@@ -114,7 +138,12 @@ async def log_request_data(request: Request, call_next):
     return response
 
 if __name__ == "__main__":
-    main_logger.info("Starting DTU Hub...")
-    deviceCommunicator.init()
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    try:
+        main_logger.info("Starting DTU Hub...")
+        deviceCommunicator.init()
+        import uvicorn
+        # Specify the number of worker threads
+        uvicorn.run(app, host="0.0.0.0", port=8000)
+    except Exception as e:
+        main_logger.exception("Failed to start DTU Hub")
+        raise
