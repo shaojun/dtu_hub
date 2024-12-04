@@ -1,6 +1,5 @@
 must:
-1. default user account create with name `dae`, password `dae123`.    
-2. root user password `Welcome@Dae123`    
-3. system language set to `US English`    
+1. must English US Ubuntu 22.04
+2. default user account create with name `dae`, password `Welcome@Dae123`.
 optional:    
 1. 电源很轻,质量?
