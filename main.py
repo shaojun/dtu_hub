@@ -133,7 +133,7 @@ async def send_sub_device_request(request: SubDeviceRequest, token: str = Depend
 async def log_request_data(request: Request, call_next):
     client_ip = request.client.host
     user_agent = request.headers.get('user-agent', 'unknown')
-    main_logger.info(f"Request from {client_ip} with User-Agent: {user_agent}")
+    main_logger.info(f"Handle HTTP Request from {client_ip} with User-Agent: {user_agent}")
     response = await call_next(request)
     return response
 

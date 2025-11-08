@@ -27,7 +27,7 @@ class DeviceCommunicator:
         return [parser_class() for parser_class in parser_classes]
 
     def __init_mqtt_client__(self):
-        mqtt_broker_url = "do.bugbug.fun"
+        mqtt_broker_url = "daefcc-cloud.top"
         mqtt_client_id = f"dtu_hub_simple_mqtt_client_{uuid.getnode()}"
         username = "test_user"
         password = "test_pass"
@@ -43,8 +43,8 @@ class DeviceCommunicator:
             print("Waiting for mqtt client to connect...")
             self.logger.info("Waiting for mqtt client to connect...")
             time.sleep(1)
-        print("Connected to mqtt broker")
-        self.logger.info("Connected to mqtt broker")
+        print(f"Connected to mqtt broker: {mqtt_broker_url}")
+        self.logger.info(f"Connected to mqtt broker: {mqtt_broker_url}")
 
     def init(self):
         self.__init_mqtt_client__()
