@@ -1,4 +1,4 @@
-# 4G DTU
+# DTU USR-DR154/152
 For demestic use this model wtih `DR154`, `RS485`, `棒状天线`    
 ![image](https://github.com/user-attachments/assets/31b3535b-a52b-4716-b68a-61765dc809b5)
 
@@ -198,3 +198,61 @@ NOTE, once the reset done, if your DTU is not using baud rate 9600, you'll lose 
   "description": "string"
 }
 ```
+
+# DTU USR-G780s
+## 基本设置
+其中`02500525102900023669`为此`DTU`的`SN`唯一码:
+
+<img width="320" height="300" alt="image" src="https://github.com/user-attachments/assets/504eecff-d40c-42f4-bbbd-87e06385d67b" />
+
+<img width="320" height="300" alt="image" src="https://github.com/user-attachments/assets/d73ee0ca-8241-453f-8649-a7322b3288b3" />
+
+<img width="320" height="300" alt="image" src="https://github.com/user-attachments/assets/71609c27-a208-4188-8bdd-48fa9c31a838" />
+
+<img width="320" height="300" alt="image" src="https://github.com/user-attachments/assets/b8ba19ff-4c3d-4c2f-b3ed-4e6a4f2e1545" />
+
+<img width="320" height="200" alt="image" src="https://github.com/user-attachments/assets/c234f286-747a-4a04-b7d9-8e95a7ff6efc" />
+
+### 发布
+```
+MQTT1 发布主题1：
+开
+
+发布主题1 Topic：
+/PubTopic/02500525102900023669
+
+发布主题1 QoS：
+0
+
+发布主题1 消息保留：
+开
+```
+### 心跳消息
+```
+启用心跳包：
+开
+
+心跳间隔时间：
+30秒
+
+心跳发送方向：
+向服务器发送心跳包
+
+心跳数据类型：
+LBS信息
+```
+
+## 消息示例
+### timely heartbeat
+```
+Topic: /PubTopic/02500525102900023669QoS: 0
+
+LNG = 112.12719727, LAT = 29.10926628, TIME = 2025-11-11 11:04:33
+```
+### when powered off dtu
+```
+Topic: /PubTopic/02500525102900023669QoS: 0
+
+02500525102900023669:POWER_OFF
+```
+
