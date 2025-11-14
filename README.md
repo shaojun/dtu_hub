@@ -201,17 +201,11 @@ NOTE, once the reset done, if your DTU is not using baud rate 9600, you'll lose 
 
 # DTU USR-G780s
 ## 基本设置
-其中`02500525102900023669`为此`DTU`的`SN`唯一码:
+其中`02500525102900023669`为此`DTU`的`SN`唯一码:    
 
-<img width="320" height="300" alt="image" src="https://github.com/user-attachments/assets/504eecff-d40c-42f4-bbbd-87e06385d67b" />
-
-<img width="320" height="300" alt="image" src="https://github.com/user-attachments/assets/d73ee0ca-8241-453f-8649-a7322b3288b3" />
-
-<img width="320" height="300" alt="image" src="https://github.com/user-attachments/assets/71609c27-a208-4188-8bdd-48fa9c31a838" />
-
-<img width="320" height="300" alt="image" src="https://github.com/user-attachments/assets/b8ba19ff-4c3d-4c2f-b3ed-4e6a4f2e1545" />
-
-<img width="320" height="200" alt="image" src="https://github.com/user-attachments/assets/c234f286-747a-4a04-b7d9-8e95a7ff6efc" />
+<img width="400" height="600" alt="image" src="https://github.com/user-attachments/assets/e55bee67-feaf-4830-b12a-b8aad0516a3d" />
+<img width="300" height="300" alt="image" src="https://github.com/user-attachments/assets/3851f2ad-8bfe-4b14-bfd9-7927792944e0" />
+<img width="300" height="300" alt="image" src="https://github.com/user-attachments/assets/e48f215b-2bcc-46df-8fb6-f6f834b8f65e" />
 
 ### 发布
 ```
