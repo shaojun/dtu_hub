@@ -45,13 +45,19 @@ devices: list[DeviceDigitalTwin] = []
 
 
 def on_msg_from_dtu_callback(topic: str, raw_msg: PayloadType):
-    main_logger.info(f"Received message on topic {topic}: {raw_msg}")
-    # if topic is like dtu/02500525102900023669/outbox
+    # if topic is like dtu/02500525101100024659/outbox
     # dtu_sn = topic.split('/')[1]
+    ever_parsed = False
     for parser in device_protocol_parsers:
-        device_identity, data_record = parser.TryParse(topic, raw_msg)
+        try:
+            device_identity, data_record = parser.TryParse(topic, raw_msg)
+        except Exception as e:
+            main_logger.exception(
+                f"Error parsing message from topic: {topic}, content: {raw_msg} with parser {parser.__class__.__name__}: {str(e)}")
+            continue
         if device_identity is None:
             continue
+        ever_parsed = True
         existing_device_updated = False
         for device in devices:
             if device.equals_to_device_identity(device_identity):
@@ -63,12 +69,16 @@ def on_msg_from_dtu_callback(topic: str, raw_msg: PayloadType):
                 if len(device.data_records) > parser.max_keep_data_records_count:
                     device.data_records = device.data_records[-parser.max_keep_data_records_count:]
         if not existing_device_updated:
+            main_logger.info(f"Adding new device: {device_identity}")
             new_device = DeviceDigitalTwin(
                 device_identity=device_identity,
                 last_device_msg_received_datetime=datetime.now(timezone.utc),
                 data_records=[data_record],
             )
             devices.append(new_device)
+    if not ever_parsed:
+        main_logger.warning(
+            f"message from topic: {topic}, content: {raw_msg} could not be parsed by any parser")
 
 
 simple_mqtt_client = SimpleMqttClient(
