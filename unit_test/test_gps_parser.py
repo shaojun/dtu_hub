@@ -1,7 +1,7 @@
 import unittest
 import codecs
 from device.protocol_parser.parser import GPS_EBYTE_E108_D01_Parser
-from models import SUB_DEVICE_TYPE, SubDeviceRequest, REQUEST_TYPE
+from models import SUB_DEVICE_TYPE, DeviceRequest, REQUEST_ACTION
 
 
 class TestGPS_EBYTE_E108_D01_Parser(unittest.TestCase):
@@ -10,8 +10,8 @@ class TestGPS_EBYTE_E108_D01_Parser(unittest.TestCase):
         self.parser = GPS_EBYTE_E108_D01_Parser()
 
     def test_serialize_read_request(self):
-        request = SubDeviceRequest(
-            request_type=REQUEST_TYPE.Read,
+        request = DeviceRequest(
+            request_action=REQUEST_ACTION.Read,
             id="1",
             dtu_sn="123456789",
             physical_id="001",
@@ -23,8 +23,8 @@ class TestGPS_EBYTE_E108_D01_Parser(unittest.TestCase):
         self.assertEqual(self.parser.Serialize(request), expected_output)
 
     def test_serialize_invalid_request(self):
-        request = SubDeviceRequest(
-            request_type=REQUEST_TYPE.Read_Advanced,
+        request = DeviceRequest(
+            request_action=REQUEST_ACTION.Read_Advanced,
             id="1",
             dtu_sn="123456789",
             physical_id="001",
@@ -38,11 +38,11 @@ class TestGPS_EBYTE_E108_D01_Parser(unittest.TestCase):
     def test_check_raw_data_is_valid_device_response(self):
         valid_data = b'\x01\x03\x22\x00\x01\x07\xE8\x00\x0B\x00\x15\x00\x06\x00\x0F\x00\x08\x00\x45\x42\xF3\x28\x50\x00\x4E\x41\xF9\x3F\xAE\x00\x00\x00\x00\x43\x02\x70\xA4\x2A\x8C'
         self.assertTrue(
-            self.parser.CheckIsRequestAndResponsePair(valid_data))
+            self.parser.TryUpdateOrCreateDevice(valid_data))
 
         invalid_data = b'\x01\x03\x22\x00\x02\x07\xE8\x00\x0B\x00\x15\x00\x06\x00\x0F\x00\x08\x00\x45\x42\xF3\x28\x50\x00\x4E\x41\xF9\x3F\xAE\x00\x00\x00\x00\x43\x02\x70\xA4\x2A\x8C'
         self.assertFalse(
-            self.parser.CheckIsRequestAndResponsePair(invalid_data))
+            self.parser.TryUpdateOrCreateDevice(invalid_data))
 
     def test_deserialize(self):
         data = b'\x01\x03\x22\x00\x01\x07\xE8\x00\x0B\x00\x15\x00\x06\x00\x0F\x00\x08\x00\x45\x42\xF3\x28\x73\x00\x4E\x41\xF9\x3F\x8F\x00\x00\x00\x00\x43\x02\x70\xA4\x2A\x8C'

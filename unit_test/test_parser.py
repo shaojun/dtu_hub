@@ -1,7 +1,7 @@
 
 import unittest
 from device.protocol_parser.parser import GPS_EBYTE_E108_D01_Parser
-from models import SubDeviceRequest, REQUEST_TYPE
+from models import DeviceRequest, REQUEST_ACTION
 
 class TestGPS_EBYTE_E108_D01_Parser(unittest.TestCase):
 
@@ -25,12 +25,12 @@ class TestGPS_EBYTE_E108_D01_Parser(unittest.TestCase):
         self.assertEqual(self.parser.get_crc16(data), expected_output)
 
     def test_serialize_read_request(self):
-        request = SubDeviceRequest(request_type=REQUEST_TYPE.Read)
+        request = DeviceRequest(request_action=REQUEST_ACTION.Read)
         expected_output = b'\x01\x03\x00\xC8\x00\x11\x04\x38'
         self.assertEqual(self.parser.Serialize(request), expected_output)
 
     def test_serialize_invalid_request(self):
-        request = SubDeviceRequest(request_type="InvalidType")
+        request = DeviceRequest(request_action="InvalidType")
         with self.assertRaises(ValueError):
             self.parser.Serialize(request)
 

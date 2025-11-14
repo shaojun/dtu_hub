@@ -7,21 +7,22 @@ import unittest
 from unittest.mock import MagicMock, patch
 from logging import Logger
 from device.communicator import DeviceCommunicator
-from models import REQUEST_TYPE, SUB_DEVICE_TYPE, SubDeviceRequest, SubDeviceResponse
+from models import REQUEST_ACTION, SUB_DEVICE_TYPE, DeviceRequest, SubDeviceResponse
 
 
 class TestDeviceCommunicator(unittest.TestCase):
     def setUp(self):
         self.logger = MagicMock(spec=Logger)
-        self.communicator = DeviceCommunicator(self.logger)
-        self.communicator.init()
+        self.communicator = DeviceCommunicator()
+        self.communicator.start()
+        time.sleep(2)  # Wait for the MQTT client to connect
 
     def test_send_async__single_request_GPS_EBYTE_E108_D01__Read(self):
         dtu_sn = "02500924101100024659"
 
         async def run_test():
-            request = SubDeviceRequest(
-                request_type=REQUEST_TYPE.Read,
+            request = DeviceRequest(
+                request_action=REQUEST_ACTION.Read,
                 id="1",
                 dtu_sn=dtu_sn,
                 physical_id="001",
@@ -30,7 +31,7 @@ class TestDeviceCommunicator(unittest.TestCase):
                 description="Test request"
             )
 
-            response = await self.communicator.send_async(request, 6000)
+            response = self.communicator.send_request(request, 6000)
 
             self.assertIsInstance(response, SubDeviceResponse)
             print(f"see SubDeviceResponse-> {response}")
@@ -56,8 +57,8 @@ class TestDeviceCommunicator(unittest.TestCase):
             response_list = []
             real_total_used_time_by_ms = 0
             for i in range(send_times):
-                request = SubDeviceRequest(
-                    request_type=REQUEST_TYPE.Read,
+                request = DeviceRequest(
+                    request_action=REQUEST_ACTION.Read,
                     id=str(i),
                     dtu_sn=dtu_sn,
                     physical_id=f"00{i}",
@@ -67,7 +68,7 @@ class TestDeviceCommunicator(unittest.TestCase):
                 )
 
                 start_time = time.time()
-                response = await self.communicator.send_async(request, 6000)
+                response = self.communicator.send_request(request, 6000)
                 print(f"got SubDeviceResponse[{i}] -> {response}")
                 used_time_by_ms = (time.time() - start_time) * 1000
                 real_total_used_time_by_ms += used_time_by_ms
