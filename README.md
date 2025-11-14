@@ -200,6 +200,13 @@ NOTE, once the reset done, if your DTU is not using baud rate 9600, you'll lose 
 ```
 
 # DTU USR-G780s
+## 连接
+#### 指示灯
+<img width="400" height="300" alt="image" src="https://github.com/user-attachments/assets/54a4d382-03cc-40bc-90c2-cc9e5edf31fc" />
+
+#### 接线
+<img width="300" height="410" alt="image" src="https://github.com/user-attachments/assets/28588a0a-08c9-4d6d-aa31-357d9c3156b6" />
+
 ## 基本设置
 其中`02500525102900023669`为此`DTU`的`SN`唯一码:    
 
@@ -207,19 +214,26 @@ NOTE, once the reset done, if your DTU is not using baud rate 9600, you'll lose 
 <img width="300" height="300" alt="image" src="https://github.com/user-attachments/assets/3851f2ad-8bfe-4b14-bfd9-7927792944e0" />
 <img width="300" height="300" alt="image" src="https://github.com/user-attachments/assets/e48f215b-2bcc-46df-8fb6-f6f834b8f65e" />
 
-### 发布
+### 发布&订阅topic
+```
+MQTT1 订阅主题1：
+开
+
+订阅主题1 Topic：
+dtu/02500525102900023669/inbox
+
+订阅主题1 QoS：
+0
+```
 ```
 MQTT1 发布主题1：
 开
 
 发布主题1 Topic：
-/PubTopic/02500525102900023669
+dtu/02500525102900023669/outbox
 
 发布主题1 QoS：
 0
-
-发布主题1 消息保留：
-开
 ```
 ### 心跳消息
 ```
@@ -227,26 +241,55 @@ MQTT1 发布主题1：
 开
 
 心跳间隔时间：
-30秒
+15秒
 
 心跳发送方向：
 向服务器发送心跳包
 
 心跳数据类型：
-LBS信息
+SN码
 ```
 
-## 消息示例
-### timely heartbeat
+### GNSS相关参数
 ```
-Topic: /PubTopic/02500525102900023669QoS: 0
+开启GNSS功能：
+开
 
-LNG = 112.12719727, LAT = 29.10926628, TIME = 2025-11-11 11:04:33
-```
-### when powered off dtu
-```
-Topic: /PubTopic/02500525102900023669QoS: 0
+GNSS工作模式：
+私有云
 
-02500525102900023669:POWER_OFF
+私有云工作模式：
+复用原有通道
+
+基于服务器A：
+开
+
+基于服务器B：
+关
+
+基于服务器C：
+关
+
+基于服务器D：
+关
+
+连接独立服务器目标地址：
+socket.usr.cn
+
+连接独立服务器目标端口：
+2317
+
+启用注册包：
+关
+
+定位心跳发送方式：
+向服务器发送
+
+定位心跳时间（秒）：
+10
+
+定位心跳类型：
+NMEA RMC
 ```
+
 
